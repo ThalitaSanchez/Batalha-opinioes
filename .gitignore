@@ -1,0 +1,4 @@
+node_modules
+git add .
+node_modules
+git commit -m "deploy inicial"
