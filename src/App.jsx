@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, provider, db } from "./firebase";
 import {
-  signInWithPopup,
+  signInWithRedirect,
   signInAnonymously,
   onAuthStateChanged
 } from "firebase/auth";
@@ -62,8 +62,9 @@ export default function App() {
     };
   }, []);
 
+  // LOGIN GOOGLE (SEM POPUP - CORRIGIDO)
   const loginGoogle = async () => {
-    await signInWithPopup(auth, provider);
+    await signInWithRedirect(auth, provider);
   };
 
   const loginAnonimo = async () => {
@@ -75,7 +76,7 @@ export default function App() {
     setTema(aleatorio);
   };
 
-  // 🎯 SISTEMA DE COMPETIÇÃO (CORRIGIDO)
+  // SISTEMA DE COMPETIÇÃO
   const julgar = async () => {
     if (!jogador1 || !jogador2) return;
 
@@ -133,22 +134,22 @@ export default function App() {
   if (!user) {
     return (
       <div style={{ padding: 20 }}>
-        <h1>Batalha de Opiniões</h1>
+        <h1>⚔️ Batalha de Opiniões</h1>
 
         <button onClick={loginGoogle}>
-          Entrar com Google
+          🔵 Entrar com Google
         </button>
 
         <br /><br />
 
         <button onClick={loginAnonimo}>
-          Entrar Anônimo
+          ⚪ Entrar Anônimo
         </button>
       </div>
     );
   }
 
-  // APP PRINCIPAL
+  // APP
   return (
     <div style={{ padding: 20 }}>
       <h1>⚔️ Batalha de Opiniões</h1>
@@ -198,12 +199,8 @@ export default function App() {
       {resultado && (
         <div style={{ marginTop: 20 }}>
           <h2>🏆 Vencedor: {resultado.vencedor}</h2>
-          <p>
-            {resultado.score1} x {resultado.score2}
-          </p>
-          <p>
-            {resultado.perdedor} perdeu feio 😭
-          </p>
+          <p>{resultado.score1} x {resultado.score2}</p>
+          <p>{resultado.perdedor} perdeu 😭</p>
         </div>
       )}
 
@@ -211,10 +208,10 @@ export default function App() {
 
       <h2>🏅 Ranking Global</h2>
 
-      {ranking.length === 0 && <p>Carregando ranking...</p>}
+      {ranking.length === 0 && <p>Carregando...</p>}
 
       {ranking.map((r, index) => (
-        <div key={r.id} style={{ marginBottom: 5 }}>
+        <div key={r.id} style={{ marginBottom: 6 }}>
           #{index + 1} {r.name} — {r.points} pts 🏆 ({r.wins || 0}W / {r.losses || 0}L)
         </div>
       ))}
