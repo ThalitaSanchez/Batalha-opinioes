@@ -8,10 +8,14 @@ import {
 
 import {
   collection,
-  addDoc,
   query,
   orderBy,
-  onSnapshot
+  onSnapshot,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  increment
 } from "firebase/firestore";
 
 export default function App() {
@@ -36,23 +40,26 @@ export default function App() {
     "Filme ou série?"
   ];
 
+  // AUTH + RANKING
   useEffect(() => {
-    onAuthStateChanged(auth, (u) => {
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
     });
 
-    const q = query(collection(db, "ranking"), orderBy("vitorias", "desc"));
+    const q = query(collection(db, "users"), orderBy("points", "desc"));
 
-    const unsub = onSnapshot(q, (snapshot) => {
+    const unsubRanking = onSnapshot(q, (snapshot) => {
       const dados = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data()
       }));
-
       setRanking(dados);
     });
 
-    return () => unsub();
+    return () => {
+      unsubAuth();
+      unsubRanking();
+    };
   }, []);
 
   const loginGoogle = async () => {
@@ -68,15 +75,15 @@ export default function App() {
     setTema(aleatorio);
   };
 
+  // 🎯 SISTEMA DE COMPETIÇÃO (CORRIGIDO)
   const julgar = async () => {
+    if (!jogador1 || !jogador2) return;
+
     const score1 = argumento1.length + Math.random() * 20;
     const score2 = argumento2.length + Math.random() * 20;
 
-    const vencedor =
-      score1 > score2 ? jogador1 : jogador2;
-
-    const perdedor =
-      score1 > score2 ? jogador2 : jogador1;
+    const vencedor = score1 > score2 ? jogador1 : jogador2;
+    const perdedor = score1 > score2 ? jogador2 : jogador1;
 
     setResultado({
       vencedor,
@@ -85,12 +92,44 @@ export default function App() {
       score2: Math.floor(score2)
     });
 
-    await addDoc(collection(db, "ranking"), {
-      nome: vencedor,
-      vitorias: 1
-    });
+    const winnerRef = doc(db, "users", vencedor);
+    const loserRef = doc(db, "users", perdedor);
+
+    const winnerSnap = await getDoc(winnerRef);
+    const loserSnap = await getDoc(loserRef);
+
+    // VENCEDOR
+    if (winnerSnap.exists()) {
+      await updateDoc(winnerRef, {
+        points: increment(10),
+        wins: increment(1)
+      });
+    } else {
+      await setDoc(winnerRef, {
+        name: vencedor,
+        points: 10,
+        wins: 1,
+        losses: 0
+      });
+    }
+
+    // PERDEDOR
+    if (loserSnap.exists()) {
+      await updateDoc(loserRef, {
+        points: increment(-5),
+        losses: increment(1)
+      });
+    } else {
+      await setDoc(loserRef, {
+        name: perdedor,
+        points: 0,
+        wins: 0,
+        losses: 1
+      });
+    }
   };
 
+  // LOGIN SCREEN
   if (!user) {
     return (
       <div style={{ padding: 20 }}>
@@ -109,12 +148,13 @@ export default function App() {
     );
   }
 
+  // APP PRINCIPAL
   return (
     <div style={{ padding: 20 }}>
-      <h1>Batalha de Opiniões</h1>
+      <h1>⚔️ Batalha de Opiniões</h1>
 
       <button onClick={gerarTema}>
-        Tema Aleatório
+        🎲 Tema Aleatório
       </button>
 
       <h2>{tema}</h2>
@@ -152,30 +192,30 @@ export default function App() {
       <br /><br />
 
       <button onClick={julgar}>
-        JULGAR BATALHA
+        ⚔️ JULGAR BATALHA
       </button>
 
       {resultado && (
-        <div>
+        <div style={{ marginTop: 20 }}>
           <h2>🏆 Vencedor: {resultado.vencedor}</h2>
-
           <p>
             {resultado.score1} x {resultado.score2}
           </p>
-
           <p>
-            {resultado.perdedor} foi completamente destruído no debate 😂
+            {resultado.perdedor} perdeu feio 😭
           </p>
         </div>
       )}
 
       <hr />
 
-      <h2>🏅 Ranking Público</h2>
+      <h2>🏅 Ranking Global</h2>
 
-      {ranking.map((r) => (
-        <div key={r.id}>
-          {r.nome} - {r.vitorias} vitória(s)
+      {ranking.length === 0 && <p>Carregando ranking...</p>}
+
+      {ranking.map((r, index) => (
+        <div key={r.id} style={{ marginBottom: 5 }}>
+          #{index + 1} {r.name} — {r.points} pts 🏆 ({r.wins || 0}W / {r.losses || 0}L)
         </div>
       ))}
     </div>
